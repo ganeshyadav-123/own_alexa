@@ -11,7 +11,7 @@ import threading
 # Disable pyautogui if you're using pywhatkit in a headless environment
 os.environ["DISPLAY"] = ":0"  # Set DISPLAY if you're in a GUI environment
 
-import pywhatkit as kit  # Only import this if you're certain you're not hitting pyautogui dependencies
+ # Only import this if you're certain you're not hitting pyautogui dependencies
 
 # Your previous code follows...
 
@@ -111,22 +111,6 @@ def execute_command(command):
         speak("Opening gmail...")
         webbrowser.open("https://www.gmail.com")
         return "Opening Gmail..."
-
-    elif 'play' in command and 'song' in command:
-        song = command.replace("play", "").replace("song", "").strip()
-        speak(f"Playing {song} for you on YouTube...")
-        kit.playonyt(song)
-        return f"Playing {song} for you on YouTube..."
-
-    elif 'search' in command or 'google' in command:
-        query = command.replace("search", "").replace("google", "").strip()
-        if query:
-            speak(f"Searching Google for {query}...")
-            kit.search(query)
-            return f"Searching Google for {query}..."
-        else:
-            speak("Please specify what you want to search for.")
-            return "Please specify what you want to search for."
 
     elif 'quit' in command or 'exit' in command:
         speak("Goodbye!")
