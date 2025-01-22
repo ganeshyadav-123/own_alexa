@@ -1,4 +1,3 @@
-import os
 import streamlit as st
 import pyttsx3
 import datetime
@@ -7,9 +6,10 @@ import pyjokes
 import webbrowser
 import speech_recognition as sr
 import threading
+import pywhatkit as kit
 
 # Disable pyautogui if you're using pywhatkit in a headless environment
-os.environ["DISPLAY"] = ":0"  # Set DISPLAY if you're in a GUI environment
+# Set DISPLAY if you're in a GUI environment
 
  # Only import this if you're certain you're not hitting pyautogui dependencies
 
