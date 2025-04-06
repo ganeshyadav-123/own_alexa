@@ -1,135 +1,173 @@
 import streamlit as st
-import pyttsx3
+import subprocess
+import pywhatkit as kit
 import datetime
 import wikipedia
 import pyjokes
 import webbrowser
 import speech_recognition as sr
 import threading
-import pywhatkit as kit
+from gtts import gTTS
+import os
+import playsound
 
-# Disable pyautogui if you're using pywhatkit in a headless environment
-# Set DISPLAY if you're in a GUI environment
-
- # Only import this if you're certain you're not hitting pyautogui dependencies
-
-# Your previous code follows...
-
-
-# Initialize the text-to-speech engine
-engine = None
-
-def init_engine():
-    global engine
-    try:
-        engine = pyttsx3.init()
-        # Set properties for voice
-        engine.setProperty('rate', 150)  # Speed of speech
-        engine.setProperty('volume', 1)  # Volume level (0.0 to 1.0)
-    except Exception as e:
-        st.error(f"Error initializing pyttsx3 engine: {e}")
-
+# Function to convert text to speech
 def speak(text):
-    """Function to convert text to speech"""
-    if engine:
-        # Use threading to run speech in a background thread
-        def run_speech():
-            engine.say(text)
-            engine.runAndWait()
-
-        # Start the speech thread
-        thread = threading.Thread(target=run_speech)
-        thread.daemon = True  # Allow the thread to exit when the main program ends
-        thread.start()
-    else:
-        st.write("Speech engine is not initialized.")
-
-def listen():
-    """Function to listen for a command"""
-    recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.write("Listening...")
-        recognizer.adjust_for_ambient_noise(source)  # Adjusts for ambient noise
-        audio = recognizer.listen(source)
-
+    if not text.strip():
+        return
     try:
-        st.write("Recognizing...")
-        command = recognizer.recognize_google(audio).lower()  # Recognize speech and convert it to text
-        st.write(f"You said: {command}")
-        return command
-    except sr.UnknownValueError:
-        st.error("Sorry, I did not understand that.")
-        return None
-    except sr.RequestError:
-        st.error("Sorry, my speech service is down.")
-        return None
+        tts = gTTS(text=text, lang='en')
+        filename = "response.mp3"
+        tts.save(filename)
+        playsound.playsound(filename)
+        os.remove(filename)
+    except Exception as e:
+        st.error(f"Speech error: {e}")
 
+# Greeting based on time
 def wish_me():
-    """Function to greet the user based on the time of day"""
     hour = datetime.datetime.now().hour
     if hour < 12:
-        speak("Good morning!")
+        return "Good morning!"
     elif 12 <= hour < 18:
-        speak("Good afternoon!")
+        return "Good afternoon!"
     else:
-        speak("Good evening!")
+        return "Good evening!"
 
+# Listen to user speech
+def listen_command():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.write("Listening... Speak now!")
+        recognizer.adjust_for_ambient_noise(source)
+        try:
+            audio = recognizer.listen(source)
+            command = recognizer.recognize_google(audio).lower()
+            return command
+        except sr.UnknownValueError:
+            return "Sorry, I could not understand. Please try again."
+        except sr.RequestError:
+            return "Could not request results. Please check your internet connection."
+
+# Open a system application
+def open_application(command):
+    apps = {
+        "notepad": "notepad.exe",
+        "calculator": "calc.exe",
+        "chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "whatsapp": "C:\\Program Files\\Google\\Chrome\\Application\\whatsapp.exe",
+        "word": "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
+        "excel": "C:\\Program Files\\Microsoft Office\\root\\Office16\\EXCEL.EXE",
+        "powerpoint": "C:\\Program Files\\Microsoft Office\\root\\Office16\\POWERPNT.EXE"
+    }
+
+    for app in apps:
+        if app in command:
+            speak(f"Opening {app}")
+            subprocess.Popen(apps[app])
+            return f"Opening {app}"
+    return "Sorry, I don't have that application in my list."
+
+# Main logic to execute command
 def execute_command(command):
-    """Function to execute commands based on user input"""
+    response = ""
+
     if 'hello' in command or 'hi' in command:
-        speak("Hello! How can I help you today?")
-        return "Hello! How can I help you today?"
+        response = "Hello! How can I help you today?"
 
     elif 'wikipedia' in command:
-        speak("Searching Wikipedia...")
-        command = command.replace("wikipedia", "")
-        result = wikipedia.summary(command, sentences=2)
-        speak(result)
-        return result
+        query = command.replace("wikipedia", "").strip()
+        try:
+            result = wikipedia.summary(query, sentences=2)
+            response = result
+        except wikipedia.exceptions.DisambiguationError:
+            response = "There are multiple results. Please be more specific."
+        except wikipedia.exceptions.PageError:
+            response = "I couldn't find anything on Wikipedia."
 
     elif 'joke' in command:
-        joke = pyjokes.get_joke()
-        speak(joke)
-        return joke
+        response = pyjokes.get_joke()
 
     elif 'time' in command:
         current_time = datetime.datetime.now().strftime("%H:%M:%S")
-        speak(f"The current time is {current_time}")
-        return f"The current time is {current_time}"
+        response = f"The current time is {current_time}"
 
     elif 'date' in command:
         current_date = datetime.datetime.now().strftime("%B %d, %Y")
-        speak(f"Today's date is {current_date}")
-        return f"Today's date is {current_date}"
+        response = f"Today's date is {current_date}"
 
-    elif 'open youtube' in command:
-        speak("Opening YouTube...")
+    elif 'open' in command:
+        response = open_application(command)
+
+    elif 'youtube' in command:
         webbrowser.open("https://www.youtube.com")
-        return "Opening YouTube..."
+        response = "Opening YouTube..."
 
-    elif 'open gmail' in command:
-        speak("Opening gmail...")
+    elif 'gmail' in command:
         webbrowser.open("https://www.gmail.com")
-        return "Opening Gmail..."
+        response = "Opening Gmail..."
 
-    elif 'quit' in command or 'exit' in command:
-        speak("Goodbye!")
-        return "Goodbye!"
+    elif 'whatsapp' in command:
+        webbrowser.open("https://web.whatsapp.com")
+        response = "Opening WhatsApp..."
 
+    elif 'play' in command:
+        song = command.replace("play", "").strip()
+        if song:
+            response = f"Playing {song} on YouTube..."
+            threading.Thread(target=lambda: kit.playonyt(song), daemon=True).start()
+        else:
+            response = "Please say the song name."
+
+    elif 'search' in command or 'google' in command:
+        query = command.replace("search", "").replace("google", "").strip()
+        if query:
+            response = f"Searching Google for {query}..."
+            threading.Thread(target=lambda: kit.search(query), daemon=True).start()
+        else:
+            response = "Please specify what to search for."
+
+    elif 'exit' in command or 'quit' in command:
+        response = "Goodbye!"
+        speak(response)
+        st.stop()
+
+    return response
+
+# Optional: Listen for "hey assistant"
+def listen_for_activation():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.write("Waiting for activation phrase: 'Hey assistant'")
+        recognizer.adjust_for_ambient_noise(source)
+        while True:
+            try:
+                audio = recognizer.listen(source, timeout=None)
+                command = recognizer.recognize_google(audio).lower()
+                if "hey assistant" in command:
+                    speak("Yes, I am listening.")
+                    return True
+            except sr.UnknownValueError:
+                continue
+            except sr.RequestError:
+                st.error("Could not connect to the recognition service.")
+                return False
+
+# Streamlit UI
 def main():
-    """Main function to run the assistant in Streamlit"""
-    init_engine()  # Initialize the TTS engine
-    wish_me()
-    speak("I am ready to assist you.")
-    
-    st.title("Voice Assistant with Streamlit")
-    st.write("Click the button below to give a voice command:")
+    st.title(" Voice Assistant with Streamlit")
+    st.write(wish_me())
+    st.write("Click the button below and speak your command:")
 
-    if st.button("Start Listening"):
-        command = listen()  # Listen for a command
-        if command:
-            response = execute_command(command)  # Execute the command if it's recognized
-            st.write(f"Response: {response}")
+    if st.button(" Start Listening"):
+        activated = True  # Change to listen_for_activation() if you want wake-word
+        if activated:
+            command = listen_command()
+            if command:
+                st.write(f" You said: *{command}*")
+                response = execute_command(command)
+                st.write(f" Response: *{response}*")
+                speak(response)
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     main()
